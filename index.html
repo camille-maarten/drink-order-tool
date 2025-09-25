@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Menu Card Lab</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
+    <style>
+        .countdown-pill {
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        .drink-card:hover {
+            transform: translateY(-2px);
+            transition: transform 0.2s ease-in-out;
+        }
+
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <div id="app" class="container mx-auto px-4 py-8">
+        <!-- Mode Chooser Screen -->
+        <div id="chooser-screen" class="max-w-md mx-auto bg-white rounded-lg shadow-lg p-8">
+            <h1 class="text-3xl font-bold text-center mb-8 text-gray-800">Menu Card Lab</h1>
+
+            <div class="mb-6">
+                <label for="user-name" class="block text-sm font-medium text-gray-700 mb-2">
+                    Your Name (required)
+                </label>
+                <input
+                    type="text"
+                    id="user-name"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Enter your name"
+                    required
+                    aria-required="true"
+                >
+                <div id="name-error" class="text-red-500 text-sm mt-1 hidden">Name is required</div>
+            </div>
+
+            <div class="mb-6">
+                <p class="text-sm font-medium text-gray-700 mb-3">Choose your mode:</p>
+                <div class="space-y-2">
+                    <button onclick="selectMode('fine-tuning')"
+                            class="w-full py-3 px-4 bg-blue-500 hover:bg-blue-600 text-white font-medium rounded-md transition-colors">
+                        Fine-Tuning
+                    </button>
+                    <button onclick="selectMode('rag')"
+                            class="w-full py-3 px-4 bg-green-500 hover:bg-green-600 text-white font-medium rounded-md transition-colors">
+                        RAG
+                    </button>
+                    <button onclick="selectMode('agentic-rag')"
+                            class="w-full py-3 px-4 bg-purple-500 hover:bg-purple-600 text-white font-medium rounded-md transition-colors">
+                        Agentic RAG
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main App Screen -->
+        <div id="main-screen" class="hidden">
+            <!-- Header -->
+            <div class="bg-white rounded-lg shadow-sm p-4 mb-6">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <h1 class="text-2xl font-bold text-gray-800">Menu Card Lab</h1>
+                        <p class="text-gray-600">Welcome, <span id="user-display"></span> | Mode: <span id="mode-display"></span></p>
+                    </div>
+                    <div id="countdown-container" class="hidden">
+                        <span id="countdown" class="countdown-pill bg-red-500 text-white px-4 py-2 rounded-full font-mono text-lg"></span>
+                    </div>
+                </div>
+            </div>
+
+
+            <!-- Menu Cards Container -->
+            <div id="menu-container">
+                <div id="menu-cards" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-8"></div>
+            </div>
+
+            <!-- Fine-Tuning Message -->
+            <div id="fine-tuning-message" class="hidden text-center py-16">
+                <h2 class="text-3xl font-bold text-gray-800 mb-4">You should know it by heart now.</h2>
+                <p class="text-gray-600">The menu has been hidden. Use the reset button to start over.</p>
+            </div>
+
+            <!-- Agentic RAG Controls -->
+            <div id="agentic-controls" class="hidden bg-white rounded-lg shadow-sm p-6 text-center">
+                <button id="confirm-selection"
+                        onclick="confirmSelection()"
+                        disabled
+                        class="bg-purple-500 hover:bg-purple-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white px-6 py-3 rounded-md font-medium text-lg">
+                    Confirm Selection
+                </button>
+                <div id="qr-container" class="mt-6 hidden">
+                    <div id="qr-code" class="flex justify-center mb-4"></div>
+                    <p id="qr-info" class="text-lg font-medium text-gray-800"></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer id="footer" class="bg-gray-800 text-white py-4 mt-16 hidden">
+        <div class="container mx-auto px-4 text-center">
+            <button onclick="resetApp()"
+                    class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md text-sm">
+                Reset App
+            </button>
+        </div>
+    </footer>
+
+    <script>
+        // Default menu data
+        const DEFAULT_MENU = [
+            {
+                id: "espresso",
+                name: "Espresso",
+                description: "Rich and bold coffee shot with intense flavor",
+                price: "$3.50"
+            },
+            {
+                id: "cappuccino",
+                name: "Cappuccino",
+                description: "Perfect balance of espresso, steamed milk, and foam",
+                price: "$4.75"
+            },
+            {
+                id: "latte",
+                name: "Caffé Latte",
+                description: "Smooth espresso with steamed milk and light foam",
+                price: "$5.25"
+            },
+            {
+                id: "americano",
+                name: "Americano",
+                description: "Espresso shots diluted with hot water",
+                price: "$3.75"
+            },
+            {
+                id: "macchiato",
+                name: "Macchiato",
+                description: "Espresso 'stained' with a dollop of foamed milk",
+                price: "$4.25"
+            },
+            {
+                id: "mocha",
+                name: "Mocha",
+                description: "Espresso with chocolate syrup and steamed milk",
+                price: "$5.50"
+            },
+            {
+                id: "frappuccino",
+                name: "Frappuccino",
+                description: "Blended coffee drink with ice and whipped cream",
+                price: "$6.25"
+            },
+            {
+                id: "chai-latte",
+                name: "Chai Latte",
+                description: "Spiced tea blend with steamed milk and foam",
+                price: "$4.95"
+            }
+        ];
+
+        // App state
+        let currentMenu = DEFAULT_MENU;
+        let countdownTimer = null;
+        let selectedDrink = null;
+        let selectionConfirmed = false;
+
+        // Initialize app
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeApp();
+        });
+
+        function initializeApp() {
+            const userName = localStorage.getItem('mcl_userName');
+            const mode = localStorage.getItem('mcl_mode');
+
+            // Check if reset is enabled via URL parameter
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.has('reset-enabled')) {
+                document.getElementById('footer').classList.remove('hidden');
+            }
+
+            if (userName && mode) {
+                // User has already chosen, go directly to main screen
+                showMainScreen(userName, mode);
+            } else {
+                // Show chooser screen
+                showChooserScreen();
+            }
+
+        }
+
+        function showChooserScreen() {
+            document.getElementById('chooser-screen').classList.remove('hidden');
+            document.getElementById('main-screen').classList.add('hidden');
+        }
+
+        function selectMode(mode) {
+            const nameInput = document.getElementById('user-name');
+            const nameError = document.getElementById('name-error');
+            const userName = nameInput.value.trim();
+
+            if (!userName) {
+                nameError.classList.remove('hidden');
+                nameInput.focus();
+                return;
+            }
+
+            nameError.classList.add('hidden');
+
+            // Save to localStorage
+            localStorage.setItem('mcl_userName', userName);
+            localStorage.setItem('mcl_mode', mode);
+
+            showMainScreen(userName, mode);
+        }
+
+        function showMainScreen(userName, mode) {
+            document.getElementById('chooser-screen').classList.add('hidden');
+            document.getElementById('main-screen').classList.remove('hidden');
+
+            document.getElementById('user-display').textContent = userName;
+            document.getElementById('mode-display').textContent = formatModeName(mode);
+
+            setupMode(mode);
+            renderMenu();
+        }
+
+        function formatModeName(mode) {
+            switch(mode) {
+                case 'fine-tuning': return 'Fine-Tuning';
+                case 'rag': return 'RAG';
+                case 'agentic-rag': return 'Agentic RAG';
+                default: return mode;
+            }
+        }
+
+        function setupMode(mode) {
+            // Hide all mode-specific elements
+            document.getElementById('countdown-container').classList.add('hidden');
+            document.getElementById('fine-tuning-message').classList.add('hidden');
+            document.getElementById('agentic-controls').classList.add('hidden');
+            document.getElementById('menu-container').classList.remove('hidden');
+
+            switch(mode) {
+                case 'fine-tuning':
+                    setupFineTuningMode();
+                    break;
+                case 'rag':
+                    // Nothing special needed for RAG mode
+                    break;
+                case 'agentic-rag':
+                    setupAgenticRAGMode();
+                    break;
+            }
+        }
+
+        function setupFineTuningMode() {
+            document.getElementById('countdown-container').classList.remove('hidden');
+
+            // Check if timer already expired
+            const timerExpired = localStorage.getItem('mcl_timerExpired');
+            if (timerExpired === 'true') {
+                showFineTuningMessage();
+                return;
+            }
+
+            // Start 2-minute countdown
+            let timeLeft = 120; // 2 minutes in seconds
+            updateCountdownDisplay(timeLeft);
+
+            countdownTimer = setInterval(() => {
+                timeLeft--;
+                updateCountdownDisplay(timeLeft);
+
+                if (timeLeft <= 0) {
+                    clearInterval(countdownTimer);
+                    localStorage.setItem('mcl_timerExpired', 'true');
+                    showFineTuningMessage();
+                }
+            }, 1000);
+        }
+
+        function updateCountdownDisplay(seconds) {
+            const minutes = Math.floor(seconds / 60);
+            const secs = seconds % 60;
+            document.getElementById('countdown').textContent = `${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+        }
+
+        function showFineTuningMessage() {
+            document.getElementById('menu-container').classList.add('hidden');
+            document.getElementById('fine-tuning-message').classList.remove('hidden');
+            document.getElementById('countdown-container').classList.add('hidden');
+        }
+
+        function setupAgenticRAGMode() {
+            document.getElementById('agentic-controls').classList.remove('hidden');
+
+            // Load saved selection and confirmation status
+            const savedSelection = localStorage.getItem('mcl_agenticSelection');
+            if (savedSelection) {
+                const selection = JSON.parse(savedSelection);
+                selectedDrink = selection.drinkId;
+                selectionConfirmed = selection.confirmed || false;
+                // Radio button will be checked when menu is rendered
+            }
+        }
+
+
+        function renderMenu() {
+            const container = document.getElementById('menu-cards');
+            const mode = localStorage.getItem('mcl_mode');
+
+            container.innerHTML = '';
+
+            currentMenu.forEach(drink => {
+                const card = document.createElement('div');
+                card.className = 'drink-card bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow';
+
+                let radioButton = '';
+                if (mode === 'agentic-rag') {
+                    const isChecked = selectedDrink === drink.id ? 'checked' : '';
+                    const isDisabled = selectionConfirmed ? 'disabled' : '';
+                    const labelClass = selectionConfirmed ? 'text-gray-400' : 'text-gray-700';
+                    radioButton = `
+                        <div class="mb-4">
+                            <input type="radio"
+                                   id="drink-${drink.id}"
+                                   name="drink-selection"
+                                   value="${drink.id}"
+                                   ${isChecked}
+                                   ${isDisabled}
+                                   onchange="selectDrink('${drink.id}')"
+                                   class="mr-2">
+                            <label for="drink-${drink.id}" class="text-sm font-medium ${labelClass}">Select this drink</label>
+                        </div>
+                    `;
+                }
+
+                card.innerHTML = `
+                    ${radioButton}
+                    <h3 class="text-xl font-bold text-gray-800 mb-2">${drink.name}</h3>
+                    <p class="text-gray-600 mb-4 text-sm">${drink.description}</p>
+                    <p class="text-2xl font-bold text-green-600">${drink.price}</p>
+                `;
+
+                container.appendChild(card);
+            });
+
+            updateConfirmButton();
+        }
+
+        function selectDrink(drinkId) {
+            if (selectionConfirmed) return; // Prevent changes after confirmation
+            selectedDrink = drinkId;
+            localStorage.setItem('mcl_agenticSelection', JSON.stringify({ drinkId, confirmed: false }));
+            updateConfirmButton();
+        }
+
+        function updateConfirmButton() {
+            const mode = localStorage.getItem('mcl_mode');
+            if (mode === 'agentic-rag') {
+                const button = document.getElementById('confirm-selection');
+                if (selectionConfirmed) {
+                    button.style.display = 'none'; // Hide button after confirmation
+                } else {
+                    button.disabled = !selectedDrink;
+                }
+            }
+        }
+
+        function confirmSelection() {
+            if (!selectedDrink) return;
+
+            const userName = localStorage.getItem('mcl_userName');
+            const drink = currentMenu.find(d => d.id === selectedDrink);
+
+            if (!drink) return;
+
+            const qrData = JSON.stringify({
+                name: userName,
+                drink: drink.name
+            });
+
+            const qrContainer = document.getElementById('qr-code');
+            const qrInfo = document.getElementById('qr-info');
+            const qrWrapper = document.getElementById('qr-container');
+
+            // Clear previous QR code
+            qrContainer.innerHTML = '';
+
+            // Generate QR code using qrcode-generator library
+            const qr = qrcode(0, 'M');
+            qr.addData(qrData);
+            qr.make();
+
+            // Create QR code as SVG with larger size
+            const qrSvg = qr.createSvgTag(8, 8);
+            qrContainer.innerHTML = qrSvg;
+
+            // Style the SVG
+            const svg = qrContainer.querySelector('svg');
+            if (svg) {
+                svg.style.width = '256px';
+                svg.style.height = '256px';
+                svg.style.border = '8px solid white';
+                svg.style.backgroundColor = 'white';
+            }
+
+            qrInfo.textContent = `Name: ${userName}, Drink: ${drink.name}`;
+            qrWrapper.classList.remove('hidden');
+
+            // Lock the selection
+            selectionConfirmed = true;
+            localStorage.setItem('mcl_agenticSelection', JSON.stringify({ drinkId: selectedDrink, confirmed: true }));
+
+            // Update UI to reflect locked state
+            updateConfirmButton();
+            renderMenu(); // Re-render to disable radio buttons
+        }
+
+
+        function resetApp() {
+            if (confirm('This will reset all data and reload the app. Continue?')) {
+                localStorage.clear();
+                location.reload();
+            }
+        }
+
+        // Handle browser back/forward
+        window.addEventListener('popstate', function() {
+            // Prevent going back to chooser if mode is already selected
+            const mode = localStorage.getItem('mcl_mode');
+            if (mode) {
+                history.pushState(null, null, location.href);
+            }
+        });
+
+        // Push initial state
+        history.pushState(null, null, location.href);
+    </script>
+</body>
+</html>
